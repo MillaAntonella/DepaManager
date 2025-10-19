@@ -1,0 +1,1 @@
+// Este archivo ya no es necesario porque ahora usamos Sequelize para la conexión a la base de datos.

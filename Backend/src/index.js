@@ -1,0 +1,33 @@
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
+
+const app = express();
+const sequelize = require('./config/sequelize');
+const Usuario = require('./models/usuario');
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Rutas de la API
+const authRoutes = require('./rutas/auth.routes');
+app.use('/api/auth', authRoutes);
+
+// Ruta de prueba
+app.get('/', (req, res) => {
+  res.json({ mensaje: '¡Bienvenido a la API de Gestión de Alquileres!' });
+});
+
+// Puerto
+const PORT = process.env.PORT || 3000;
+
+// Sincronizar modelos y arrancar el servidor
+sequelize.sync().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
+  });
+}).catch((err) => {
+  console.error('Error al sincronizar la base de datos:', err);
+});
