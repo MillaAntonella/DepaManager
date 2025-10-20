@@ -1,0 +1,100 @@
+.seleccion-rol-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.seleccion-rol-content {
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 800px;
+  width: 100%;
+}
+
+.seleccion-rol-content h1 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 2.5em;
+}
+
+.seleccion-rol-content p {
+  color: #666;
+  margin-bottom: 40px;
+  font-size: 1.2em;
+}
+
+.rol-buttons {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.rol-btn {
+  background: white;
+  border: 3px solid #e0e0e0;
+  border-radius: 15px;
+  padding: 30px 20px;
+  width: 280px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.rol-btn:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.propietario-btn {
+  border-color: #1976d2;
+}
+
+.propietario-btn:hover {
+  border-color: #1565c0;
+  background: #f3f8ff;
+}
+
+.inquilino-btn {
+  border-color: #4caf50;
+}
+
+.inquilino-btn:hover {
+  border-color: #388e3c;
+  background: #f1f8e9;
+}
+
+.rol-icon {
+  font-size: 3em;
+  margin-bottom: 15px;
+}
+
+.rol-btn h3 {
+  color: #333;
+  margin: 15px 0 10px 0;
+  font-size: 1.5em;
+}
+
+.rol-btn p {
+  color: #666;
+  margin: 0;
+  font-size: 1em;
+}
+
+@media (max-width: 768px) {
+  .rol-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .rol-btn {
+    width: 100%;
+    max-width: 300px;
+  }
+}

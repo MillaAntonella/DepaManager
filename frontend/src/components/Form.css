@@ -49,3 +49,130 @@
 .back-btn:hover {
   background: #555;
 }
+
+/* Estilos para PropietarioAuth */
+.propietario-auth-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.propietario-auth-content {
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  max-width: 900px;
+  width: 100%;
+  text-align: center;
+}
+
+.propietario-auth-content h1 {
+  color: #1976d2;
+  margin-bottom: 10px;
+  font-size: 2.5em;
+}
+
+.propietario-auth-content > p {
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 1.2em;
+}
+
+.auth-columns {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.auth-column {
+  flex: 1;
+  max-width: 400px;
+}
+
+.auth-column .form-container {
+  margin: 0;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* Estilos para InquilinoAuth */
+.inquilino-auth-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.inquilino-auth-content {
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.inquilino-header {
+  margin-bottom: 30px;
+}
+
+.inquilino-icon {
+  font-size: 4em;
+  margin-bottom: 15px;
+}
+
+.inquilino-header h1 {
+  color: #4caf50;
+  margin-bottom: 10px;
+  font-size: 2.2em;
+}
+
+.inquilino-header p {
+  color: #666;
+  font-size: 1.1em;
+}
+
+.inquilino-form {
+  margin: 0;
+}
+
+.inquilino-btn {
+  background: #4caf50;
+}
+
+.inquilino-btn:hover {
+  background: #388e3c;
+}
+
+.inquilino-info {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f1f8e9;
+  border-radius: 8px;
+  border-left: 4px solid #4caf50;
+}
+
+.inquilino-info p {
+  margin: 0;
+  color: #2e7d32;
+  font-size: 0.9em;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .auth-columns {
+    flex-direction: column;
+  }
+  
+  .propietario-auth-content,
+  .inquilino-auth-content {
+    padding: 20px;
+  }
+}
