@@ -1,13 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import SeleccionRol from './components/SeleccionRol';
-import PropietarioAuth from './components/PropietarioAuth';
-import InquilinoAuth from './components/InquilinoAuth';
-import Inicio from './components/Inicio';
-import Login from './components/Login';
-import Registro from './components/Registro';
-import Dashboard from './components/Dashboard';
-import './App.css';
+import SeleccionRol from './pages/SeleccionRol';
+import PropietarioAuth from './pages/Auth/PropietarioAuth';
+import InquilinoAuth from './pages/Auth/InquilinoAuth';
+import Inicio from './pages/Inicio';
+import Login from './pages/Login';
+import Registro from './pages/Registro';
+import Dashboard from './pages/Dashboard';
+import './styles/App.css'; 
 
 function App() {
   return (

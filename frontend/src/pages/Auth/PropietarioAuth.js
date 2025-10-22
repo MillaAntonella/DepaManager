@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
-import './Form.css';
+import api from '../../services/api';
+import '../../styles/Form.css';
 
 function PropietarioAuth() {
   const [formData, setFormData] = useState({
