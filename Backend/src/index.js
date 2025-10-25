@@ -4,7 +4,7 @@ require('dotenv').config();
 
 const app = express();
 const sequelize = require('./config/sequelize');
-const Usuario = require('./models/usuario');
+const Usuario = require('./models/user');
 
 // Middlewares
 app.use(cors());
@@ -12,7 +12,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rutas de la API
-const authRoutes = require('./rutas/auth.routes');
+const authRoutes = require('./routes/auth.routes');
+
 app.use('/api/auth', authRoutes);
 
 // Ruta de prueba
