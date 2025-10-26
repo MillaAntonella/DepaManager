@@ -171,12 +171,83 @@ const obtenerDashboard = async (req, res) => {
       // Obtener estadísticas para propietarios
       const totalInquilinos = await Usuario.count({ where: { rol: 'inquilino' } });
       
+      // Simulación de datos hasta implementar modelos completos
+      const ingresosMes = Math.floor(Math.random() * 50000) + 20000; // Entre 20k-70k
+      const incidenciasAbiertas = Math.floor(Math.random() * 30) + 5; // Entre 5-35
+      const ocupacionPorcentaje = Math.floor(Math.random() * 40) + 60; // Entre 60%-100%
+      
+      // Pagos recientes simulados
+      const pagosRecientes = [
+        {
+          inquilino: 'María González',
+          apartamento: '15 Ena',
+          monto: '$1200',
+          estado: 'Pagado',
+          fecha: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
+        },
+        {
+          inquilino: 'Carlos Ruiz',
+          apartamento: '14 Ena',
+          monto: '$950',
+          estado: 'Pendiente',
+          fecha: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
+        },
+        {
+          inquilino: 'Ana López',
+          apartamento: '13 Ena',
+          monto: '$1100',
+          estado: 'Pagado',
+          fecha: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
+        },
+        {
+          inquilino: 'Pedro Martín',
+          apartamento: '10 Ena',
+          monto: '$800',
+          estado: 'Vencido',
+          fecha: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
+        }
+      ];
+
+      // Próximas tareas simuladas
+      const proximasTareas = [
+        {
+          titulo: 'Revisión contrato - Apt 205',
+          tipo: 'Alta',
+          fecha: new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000)
+        },
+        {
+          titulo: 'Mantenimiento aires acondicionados',
+          tipo: 'Media',
+          fecha: new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000)
+        },
+        {
+          titulo: 'Inspección de seguridad',
+          tipo: 'Baja',
+          fecha: new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000)
+        }
+      ];
+
+      // Estado de ocupación
+      const ocupados = Math.floor((ocupacionPorcentaje / 100) * 160); // Asumiendo 160 apartamentos totales
+      const disponibles = 160 - ocupados - 5; // -5 para mantenimiento
+      const mantenimiento = 5;
+
       res.json({
         mensaje: 'Dashboard de propietario',
         usuario: req.usuario,
         estadisticas: {
           totalInquilinos,
-          // Aquí podrías agregar más estadísticas como propiedades, pagos, etc.
+          ingresosMes,
+          incidenciasAbiertas,
+          ocupacionPorcentaje,
+          pagosRecientes,
+          proximasTareas,
+          estadoOcupacion: {
+            ocupados,
+            disponibles,
+            mantenimiento,
+            total: 160
+          }
         }
       });
     } else if (rol === 'inquilino') {
@@ -184,12 +255,68 @@ const obtenerDashboard = async (req, res) => {
       res.json({
         mensaje: 'Dashboard de inquilino',
         usuario: req.usuario,
-        // Aquí podrías agregar información específica del inquilino
         info: {
           mensaje: 'Bienvenido a tu portal de inquilino'
         }
       });
     }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error en el servidor' });
+  }
+};
+
+// Actualizar perfil de usuario (email y contraseña)
+const actualizarPerfil = async (req, res) => {
+  try {
+    const { email, password, passwordActual } = req.body;
+    const usuarioId = req.usuario.id;
+
+    // Buscar el usuario actual
+    const usuario = await Usuario.findByPk(usuarioId);
+    if (!usuario) {
+      return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+    }
+
+    // Si se quiere cambiar la contraseña, verificar la contraseña actual
+    if (password && passwordActual) {
+      const passwordValida = await bcrypt.compare(passwordActual, usuario.password);
+      if (!passwordValida) {
+        return res.status(400).json({ mensaje: 'La contraseña actual es incorrecta' });
+      }
+    }
+
+    // Preparar datos para actualizar
+    const datosActualizar = {};
+    
+    if (email && email !== usuario.email) {
+      // Verificar que el nuevo email no esté en uso
+      const emailExiste = await Usuario.findOne({ 
+        where: { email, id: { [require('sequelize').Op.ne]: usuarioId } } 
+      });
+      if (emailExiste) {
+        return res.status(400).json({ mensaje: 'El email ya está en uso' });
+      }
+      datosActualizar.email = email;
+    }
+
+    if (password) {
+      datosActualizar.password = await bcrypt.hash(password, 10);
+    }
+
+    // Actualizar usuario
+    await usuario.update(datosActualizar);
+
+    // Devolver usuario actualizado (sin contraseña)
+    const usuarioActualizado = await Usuario.findByPk(usuarioId, {
+      attributes: { exclude: ['password'] }
+    });
+
+    res.json({
+      mensaje: 'Perfil actualizado exitosamente',
+      usuario: usuarioActualizado
+    });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ mensaje: 'Error en el servidor' });
@@ -202,5 +329,6 @@ module.exports = {
   crearInquilino,
   obtenerPerfil,
   obtenerInquilinos,
-  obtenerDashboard
+  obtenerDashboard,
+  actualizarPerfil
 };

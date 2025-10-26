@@ -6,7 +6,8 @@ const {
   crearInquilino, 
   obtenerPerfil, 
   obtenerInquilinos, 
-  obtenerDashboard 
+  obtenerDashboard,
+  actualizarPerfil 
 } = require('../controllers/auth.controller');
 const { 
   verificarToken, 
@@ -20,6 +21,7 @@ router.post('/registro', registro);
 
 // Rutas protegidas para usuarios autenticados (cualquier rol)
 router.get('/perfil', verificarToken, usuariosAutenticados, obtenerPerfil);
+router.put('/perfil', verificarToken, usuariosAutenticados, actualizarPerfil);
 router.get('/dashboard', verificarToken, usuariosAutenticados, obtenerDashboard);
 
 // Rutas protegidas solo para propietarios
