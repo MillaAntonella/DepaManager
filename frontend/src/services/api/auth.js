@@ -72,6 +72,16 @@ export const authService = {
     }
   },
 
+  // Obtener todos los inquilinos (solo propietarios)
+  getTenants: async () => {
+    try {
+      const response = await api.get('/auth/inquilinos');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Actualizar perfil (email y/o contraseña)
   updateProfile: async (email, password, passwordActual) => {
     try {
@@ -108,6 +118,58 @@ export const authService = {
   // Verificar si está autenticado
   isAuthenticated: () => {
     return !!localStorage.getItem('token');
+  },
+
+  // Obtener pagos (solo propietarios)
+  getPayments: async () => {
+    try {
+      const response = await api.get('/pagos');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Crear nuevo pago
+  createPayment: async (pagoData) => {
+    try {
+      const response = await api.post('/pagos', pagoData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Actualizar pago
+  updatePayment: async (id, pagoData) => {
+    try {
+      const response = await api.put(`/pagos/${id}`, pagoData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Marcar pago como pagado
+  markPaymentAsPaid: async (id, metodoPago) => {
+    try {
+      const response = await api.patch(`/pagos/${id}/marcar-pagado`, {
+        metodo_pago: metodoPago
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Eliminar pago
+  deletePayment: async (id) => {
+    try {
+      const response = await api.delete(`/pagos/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
   },
 
   // Obtener usuario actual

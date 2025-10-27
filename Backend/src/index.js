@@ -5,6 +5,7 @@ require('dotenv').config();
 const app = express();
 const sequelize = require('./config/sequelize');
 const Usuario = require('./models/user');
+const Pago = require('./models/payment');
 
 // Middlewares
 app.use(cors());
@@ -13,8 +14,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rutas de la API
 const authRoutes = require('./routes/auth.routes');
+const paymentRoutes = require('./routes/payment.routes');
 
 app.use('/api/auth', authRoutes);
+app.use('/api/pagos', paymentRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {

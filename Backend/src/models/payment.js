@@ -10,10 +10,11 @@ const Pago = sequelize.define('Pago', {
   id_contrato: {
     type: DataTypes.BIGINT.UNSIGNED,
     allowNull: false,
-    references: {
-      model: 'contratos',
-      key: 'id_contrato'
-    }
+    // Removemos la referencia por ahora hasta tener la tabla contratos
+    // references: {
+    //   model: 'contratos',
+    //   key: 'id_contrato'
+    // }
   },
   monto: {
     type: DataTypes.DECIMAL(10, 2),
