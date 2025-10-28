@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/api/auth';
 import PaymentsManagement from './PaymentsManagement';
+import IncidentsManagement from './IncidentsManagement';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
@@ -710,8 +711,14 @@ const Dashboard = () => {
         )}
 
         {activeTab === 'pagos' && <PaymentsManagement />}
+        
+        {activeTab === 'incidencias' && (
+          <div className="p-6">
+            <IncidentsManagement />
+          </div>
+        )}
 
-        {activeTab !== 'dashboard' && activeTab !== 'inquilinos' && activeTab !== 'pagos' && (
+        {activeTab !== 'dashboard' && activeTab !== 'inquilinos' && activeTab !== 'pagos' && activeTab !== 'incidencias' && (
           <div className="p-6">
             <div className="bg-white rounded-lg shadow p-8 text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">

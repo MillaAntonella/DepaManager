@@ -12,7 +12,12 @@ import AdminDashboard from '../../pages/admin/Dashboard';
 import TenantsManagement from '../../pages/admin/TenantsManagement';
 
 // Tenant Pages
+import TenantLayout from '../../components/layout/TenantLayout';
 import TenantDashboard from '../../pages/tenant/Dashboard';
+import TenantPayments from '../../pages/tenant/Payments';
+import TenantHistory from '../../pages/tenant/History';
+import TenantIncidents from '../../pages/tenant/Incidents';
+import TenantNotifications from '../../pages/tenant/Notifications';
 import TenantProfile from '../../pages/tenant/Profile';
 
 // Protected Route Component
@@ -58,22 +63,27 @@ const AppRouter = () => {
           }
         />
 
-        {/* Tenant Routes */}
+        {/* Tenant Routes with Layout */}
+        <Route
+          path="/tenant/*"
+          element={
+            <ProtectedRoute requiredRole="inquilino">
+              <TenantLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="dashboard" element={<TenantDashboard />} />
+          <Route path="payments" element={<TenantPayments />} />
+          <Route path="history" element={<TenantHistory />} />
+          <Route path="incidents" element={<TenantIncidents />} />
+          <Route path="notifications" element={<TenantNotifications />} />
+          <Route path="profile" element={<TenantProfile />} />
+        </Route>
+
+        {/* Legacy tenant route redirect */}
         <Route
           path="/tenant-dashboard"
-          element={
-            <ProtectedRoute requiredRole="inquilino">
-              <TenantDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/tenant/profile"
-          element={
-            <ProtectedRoute requiredRole="inquilino">
-              <TenantProfile />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/tenant/dashboard" replace />}
         />
 
         {/* Catch all - redirect to landing */}

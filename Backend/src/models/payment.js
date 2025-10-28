@@ -9,12 +9,41 @@ const Pago = sequelize.define('Pago', {
   },
   id_contrato: {
     type: DataTypes.BIGINT.UNSIGNED,
-    allowNull: false,
+    allowNull: true,
+    defaultValue: null
     // Removemos la referencia por ahora hasta tener la tabla contratos
     // references: {
     //   model: 'contratos',
     //   key: 'id_contrato'
     // }
+  },
+  id_inquilino: {
+    type: DataTypes.BIGINT.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'inquilinos',
+      key: 'id_inquilino'
+    }
+  },
+  concepto: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+    defaultValue: 'Alquiler mensual',
+    validate: {
+      len: {
+        args: [1, 255],
+        msg: 'El concepto debe tener entre 1 y 255 caracteres'
+      }
+    }
+  },
+  fecha_vencimiento: {
+    type: DataTypes.DATEONLY,
+    allowNull: false,
+    validate: {
+      isDate: {
+        msg: 'Debe ser una fecha válida'
+      }
+    }
   },
   monto: {
     type: DataTypes.DECIMAL(10, 2),

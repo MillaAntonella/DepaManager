@@ -7,12 +7,12 @@ const Notificacion = sequelize.define('Notificacion', {
     autoIncrement: true,
     primaryKey: true
   },
-  id_usuario: {
-    type: DataTypes.BIGINT.UNSIGNED,
+  usuario_id: {
+    type: DataTypes.INTEGER,
     allowNull: false,
     references: {
       model: 'usuarios',
-      key: 'id_usuario'
+      key: 'id'
     }
   },
   titulo: {

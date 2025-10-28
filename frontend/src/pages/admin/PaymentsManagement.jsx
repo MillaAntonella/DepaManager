@@ -1,185 +1,192 @@
 import React, { useState, useEffect } from 'react';
-import { authService } from '../../services/api/auth';
+import { adminService } from '../../services/adminService';
 
 const PaymentsManagement = () => {
   const [pagos, setPagos] = useState([]);
-  const [pagoStats, setPagoStats] = useState({
-    ingresosMes: 0,
-    pagosPendientes: 0,
-    pagosVencidos: 0,
-    tasaCobro: 0
-  });
-  const [loadingPagos, setLoadingPagos] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Estados para modales
+  const [selectedPago, setSelectedPago] = useState(null);
+  const [showMarkPaidModal, setShowMarkPaidModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedPago, setSelectedPago] = useState(null);
   const [creatingPago, setCreatingPago] = useState(false);
   const [updatingPago, setUpdatingPago] = useState(false);
-  
-  // Estados para formularios
-  const [newPago, setNewPago] = useState({
-    concepto: 'Alquiler mensual',
-    monto: '',
-    id_contrato: 1
+  const [newPago, setNewPago] = useState({ 
+    concepto: 'Alquiler mensual', 
+    monto: '', 
+    id_inquilino: '', 
+    fecha_vencimiento: '',
+    tipo_recurrencia: 'unico',
+    duracion_meses: 12
   });
-  const [editPago, setEditPago] = useState({
-    concepto: '',
-    monto: '',
-    estado_pago: '',
-    metodo_pago: ''
+  const [tenants, setTenants] = useState([]);
+  const [editPago, setEditPago] = useState({ concepto: '', monto: '', estado_pago: '', metodo_pago: '' });
+
+  // Estados para estadísticas
+  const [stats, setStats] = useState({
+    ingresosMes: 0,
+    cambioMes: 0,
+    pagosPendientes: 0,
+    pagosVencidos: 0,
+    tasaCobro: 0,
+    progresoMensual: []
   });
 
   useEffect(() => {
-    loadPagos();
+    loadPaymentsData();
+    loadTenants();
   }, []);
 
-  const loadPagos = async () => {
-    setLoadingPagos(true);
-    try {
-      console.log('Cargando pagos desde backend...');
-      const data = await authService.getPayments();
-      console.log('Datos recibidos del backend:', data);
-      
-      setPagos(data.pagos || []);
-      setPagoStats(data.estadisticas || {
+  // Función para calcular estadísticas reales desde los datos
+  const calculateStatsFromData = (pagosData) => {
+    // Verificar que pagosData sea un array
+    if (!Array.isArray(pagosData)) {
+      console.warn('pagosData no es un array:', pagosData);
+      return {
         ingresosMes: 0,
-        pagosPendientes: 0,  
-        pagosVencidos: 0,
-        tasaCobro: 0
-      });
-    } catch (error) {
-      console.error('Error cargando pagos desde backend:', error);
-      setPagos([]);
-      setPagoStats({
-        ingresosMes: 0,
+        cambioMes: 0,
         pagosPendientes: 0,
         pagosVencidos: 0,
-        tasaCobro: 0
-      });
-      alert('Error al conectar con el servidor. Verifica que el backend esté funcionando.');
-    } finally {
-      setLoadingPagos(false);
+        tasaCobro: 0,
+        progresoMensual: []
+      };
     }
-  };
 
-  // Función para formatear montos en soles peruanos
-  const formatSoles = (amount) => {
-    return new Intl.NumberFormat('es-PE', {
-      style: 'currency',
-      currency: 'PEN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
-
-  // Función para crear nuevo pago
-  const handleCreatePago = async (e) => {
-    e.preventDefault();
-    setCreatingPago(true);
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
     
-    try {
-      console.log('Creando pago en backend...');
-      const result = await authService.createPayment({
-        concepto: newPago.concepto,
-        monto: parseFloat(newPago.monto),
-        id_contrato: newPago.id_contrato
-      });
-      
-      console.log('Pago creado en backend:', result);
-      
-      // Recargar la lista de pagos desde el backend
-      await loadPagos();
-      
-      // Resetear formulario y cerrar modal
-      setNewPago({ concepto: 'Alquiler mensual', monto: '', id_contrato: 1 });
-      setShowCreateModal(false);
-      
-      alert('Pago creado exitosamente en la base de datos');
-    } catch (error) {
-      console.error('Error creando pago:', error);
-      alert(error.mensaje || 'Error al crear el pago. Verifica que el backend esté funcionando.');
-    } finally {
-      setCreatingPago(false);
-    }
-  };
-
-  // Función para ver detalles del pago
-  const handleViewPago = (pago) => {
-    setSelectedPago(pago);
-    setShowViewModal(true);
-  };
-
-  // Función para editar pago
-  const handleEditPago = (pago) => {
-    setSelectedPago(pago);
-    setEditPago({
-      concepto: pago.concepto,
-      monto: pago.monto.toString(),
-      estado_pago: pago.estado.toLowerCase(),
-      metodo_pago: pago.metodoPago === 'Tarjeta de Crédito' ? 'tarjeta_credito' :
-                   pago.metodoPago === 'Transferencia' ? 'transferencia_bancaria' :
-                   pago.metodoPago === 'Efectivo' ? 'efectivo' : ''
+    // Filtrar pagos del mes actual
+    const pagosMesActual = pagosData.filter(pago => {
+      const fechaPago = new Date(pago.fecha_pago || pago.createdAt);
+      return fechaPago.getMonth() === currentMonth && fechaPago.getFullYear() === currentYear;
     });
-    setShowEditModal(true);
+
+    // Calcular ingresos del mes (pagos completados)
+    const ingresosMes = pagosMesActual
+      .filter(pago => pago.estado_pago === 'pagado')
+      .reduce((total, pago) => total + parseFloat(pago.monto || 0), 0);
+
+    // Contar pagos pendientes
+    const pagosPendientes = pagosData.filter(pago => pago.estado_pago === 'pendiente').length;
+
+    // Contar pagos vencidos (pendientes con fecha vencimiento pasada)
+    const today = new Date();
+    const pagosVencidos = pagosData.filter(pago => {
+      if (pago.estado_pago !== 'pendiente') return false;
+      const fechaVencimiento = new Date(pago.fecha_vencimiento);
+      return fechaVencimiento < today;
+    }).length;
+
+    // Calcular tasa de cobro
+    const totalPagos = pagosData.length;
+    const pagosPagados = pagosData.filter(pago => pago.estado_pago === 'pagado').length;
+    const tasaCobro = totalPagos > 0 ? Math.round((pagosPagados / totalPagos) * 100) : 0;
+
+    // Calcular progreso mensual (últimos 3 meses)
+    const progresoMensual = [];
+    for (let i = 2; i >= 0; i--) {
+      const mes = new Date(currentYear, currentMonth - i, 1);
+      const nombreMes = mes.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+      
+      const pagosMes = pagosData.filter(pago => {
+        const fechaPago = new Date(pago.fecha_pago || pago.createdAt);
+        return fechaPago.getMonth() === mes.getMonth() && fechaPago.getFullYear() === mes.getFullYear();
+      });
+
+      const montoMes = pagosMes
+        .filter(pago => pago.estado_pago === 'pagado')
+        .reduce((total, pago) => total + parseFloat(pago.monto || 0), 0);
+
+      progresoMensual.push({
+        mes: nombreMes,
+        monto: montoMes,
+        total: 50000 // Meta mensual - esto podría venir de configuración
+      });
+    }
+
+    return {
+      ingresosMes,
+      cambioMes: 0, // Se podría calcular comparando con mes anterior
+      pagosPendientes,
+      pagosVencidos,
+      tasaCobro,
+      progresoMensual
+    };
   };
 
-  // Función para guardar cambios de edición
-  const handleSaveEdit = async (e) => {
-    e.preventDefault();
-    setUpdatingPago(true);
-    
+  const loadTenants = async () => {
+    console.log('🚀 Iniciando carga de inquilinos...');
     try {
-      await authService.updatePayment(selectedPago.id, {
-        monto: parseFloat(editPago.monto),
-        estado_pago: editPago.estado_pago,
-        metodo_pago: editPago.metodo_pago
-      });
+      const response = await adminService.getTenants();
+      console.log('📥 Respuesta completa de getTenants:', response);
       
-      // Recargar la lista de pagos desde el backend
-      await loadPagos();
-      
-      setShowEditModal(false);
-      alert('Pago actualizado exitosamente en la base de datos');
+      if (response.success) {
+        console.log('✅ Inquilinos cargados exitosamente:', response.data);
+        console.log('📊 Cantidad de inquilinos:', response.data?.length || 0);
+        setTenants(response.data || []);
+      } else {
+        console.error('❌ Error en respuesta de inquilinos:', response.message);
+        setTenants([]);
+      }
     } catch (error) {
-      console.error('Error actualizando pago:', error);
-      alert(error.mensaje || 'Error al actualizar el pago. Verifica que el backend esté funcionando.');
-    } finally {
-      setUpdatingPago(false);
+      console.error('💥 Error de conexión cargando inquilinos:', error);
+      console.error('🔍 Detalles del error:', error.response?.data || error.message);
+      setTenants([]);
     }
   };
 
-  // Función para marcar como pagado
+  const loadPaymentsData = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await adminService.getAllPayments();
+      
+      if (response.success) {
+        console.log('📥 Frontend: Respuesta completa:', response);
+        console.log('📊 Frontend: response.data:', response.data);
+        const paymentsData = response.data?.data?.pagos || response.data?.pagos || response.data || [];
+        console.log('💰 Frontend: Pagos extraídos:', paymentsData.length, 'pagos');
+        setPagos(paymentsData);
+        
+        // Calcular estadísticas reales desde los datos
+        const calculatedStats = calculateStatsFromData(paymentsData);
+        setStats(calculatedStats);
+      } else {
+        console.error('Error cargando pagos:', response.message);
+        setPagos([]);
+        setStats({
+          ingresosMes: 0,
+          cambioMes: 0,
+          pagosPendientes: 0,
+          pagosVencidos: 0,
+          tasaCobro: 0,
+          progresoMensual: []
+        });
+      }
+
+    } catch (error) {
+      console.error('Error cargando datos de pagos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleMarkAsPaid = async (pago) => {
     try {
-      const metodoPago = prompt('Selecciona método de pago:\n1. Efectivo\n2. Transferencia\n3. Tarjeta de Crédito\n\nEscribe el número:');
+      const response = await adminService.markPaymentAsPaid(pago.id, 'Transferencia');
       
-      if (!metodoPago) return;
-      
-      const metodos = {
-        '1': 'efectivo',
-        '2': 'transferencia_bancaria',
-        '3': 'tarjeta_credito'
-      };
-      
-      const metodoSeleccionado = metodos[metodoPago];
-      if (!metodoSeleccionado) {
-        alert('Opción inválida');
-        return;
+      if (response.success) {
+        await loadPaymentsData(); // Recargar datos
+        setShowMarkPaidModal(false);
+        setSelectedPago(null);
+        alert(response.message || 'Pago marcado como pagado exitosamente');
+      } else {
+        alert(response.message || 'Error al marcar el pago como pagado');
       }
-      
-      await authService.markPaymentAsPaid(pago.id, metodoSeleccionado);
-      
-      // Recargar la lista de pagos desde el backend
-      await loadPagos();
-      
-      alert('Pago marcado como pagado exitosamente en la base de datos');
     } catch (error) {
       console.error('Error marcando pago como pagado:', error);
-      alert(error.mensaje || 'Error al marcar el pago como pagado. Verifica que el backend esté funcionando.');
+      alert('Error al marcar el pago como pagado');
     }
   };
 
@@ -187,15 +194,17 @@ const PaymentsManagement = () => {
   const handleDeletePago = async (pago) => {
     if (window.confirm(`¿Estás seguro de que quieres eliminar el pago de ${formatSoles(pago.monto)}?`)) {
       try {
-        await authService.deletePayment(pago.id);
-        
-        // Recargar la lista de pagos desde el backend
-        await loadPagos();
-        
-        alert('Pago eliminado exitosamente de la base de datos');
+        const response = await adminService.deletePayment(pago.id);
+
+        if (response.success) {
+          await loadPaymentsData(); // Recargar datos
+          alert(response.message || 'Pago eliminado exitosamente');
+        } else {
+          alert(response.message || 'Error al eliminar el pago');
+        }
       } catch (error) {
         console.error('Error eliminando pago:', error);
-        alert(error.mensaje || 'Error al eliminar el pago. Verifica que el backend esté funcionando.');
+        alert('Error al eliminar el pago');
       }
     }
   };
@@ -222,17 +231,18 @@ const PaymentsManagement = () => {
 
   // Función para exportar a Excel
   const exportToExcel = () => {
-    const headers = ['Inquilino', 'Concepto', 'Monto (S/)', 'Estado', 'Fecha Vencimiento', 'Método de Pago', 'Fecha de Pago'];
+    const headers = ['Inquilino', 'Apartamento', 'Tipo', 'Monto (S/)', 'Estado', 'Fecha Vencimiento', 'Método de Pago', 'Fecha de Pago'];
     
     // Para Excel, usamos formato CSV que Excel puede abrir
     const csvContent = [
       headers.join(','),
       ...pagos.map(pago => [
         `"${pago.inquilino}"`,
-        `"${pago.concepto}"`,
+        `"${pago.apartamento}"`,
+        `"${pago.tipo}"`,
         pago.monto,
         `"${pago.estado}"`,
-        `"${pago.fechaVencimiento || ''}"`,
+        `"${pago.vencimiento || ''}"`,
         `"${pago.metodoPago || ''}"`,
         `"${pago.fechaPago || ''}"`
       ].join(','))
@@ -242,7 +252,7 @@ const PaymentsManagement = () => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `pagos_${new Date().toISOString().split('T')[0]}.xlsx`);
+    link.setAttribute('download', `pagos_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -279,7 +289,8 @@ const PaymentsManagement = () => {
             <thead>
               <tr>
                 <th>Inquilino</th>
-                <th>Concepto</th>
+                <th>Apartamento</th>
+                <th>Tipo</th>
                 <th>Monto</th>
                 <th>Estado</th>
                 <th>Fecha Vencimiento</th>
@@ -291,10 +302,11 @@ const PaymentsManagement = () => {
               ${pagos.map(pago => `
                 <tr>
                   <td>${pago.inquilino}</td>
-                  <td>${pago.concepto}</td>
+                  <td>${pago.apartamento}</td>
+                  <td>${pago.tipo}</td>
                   <td>${formatSoles(pago.monto)}</td>
                   <td>${pago.estado}</td>
-                  <td>${pago.fechaVencimiento || '-'}</td>
+                  <td>${pago.vencimiento || '-'}</td>
                   <td>${pago.metodoPago || '-'}</td>
                   <td>${pago.fechaPago || '-'}</td>
                 </tr>
@@ -323,22 +335,128 @@ const PaymentsManagement = () => {
     setShowCreateModal(false);
     setShowEditModal(false);
     setShowViewModal(false);
+    setShowMarkPaidModal(false);
     setSelectedPago(null);
-    setNewPago({ concepto: 'Alquiler mensual', monto: '', id_contrato: 1 });
+    setNewPago({ 
+      concepto: 'Alquiler mensual', 
+      monto: '', 
+      id_inquilino: '', 
+      fecha_vencimiento: '',
+      tipo_recurrencia: 'unico',
+      duracion_meses: 12
+    });
     setEditPago({ concepto: '', monto: '', estado_pago: '', metodo_pago: '' });
   };
 
-  // Filtrar pagos según la búsqueda
-  const filteredPagos = pagos.filter(pago =>
-    pago.inquilino?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pago.concepto?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pago.estado?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleViewPago = (pago) => {
+    setSelectedPago(pago);
+    setShowViewModal(true);
+  };
 
-  if (loadingPagos) {
+  const handleEditPago = (pago) => {
+    setSelectedPago(pago);
+    setEditPago({
+      concepto: pago.tipo,
+      monto: pago.monto,
+      estado_pago: pago.estado,
+      metodo_pago: pago.metodoPago || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleCreatePago = async (e) => {
+    e.preventDefault();
+    setCreatingPago(true);
+    try {
+      const paymentData = {
+        id_inquilino: parseInt(newPago.id_inquilino),
+        concepto: newPago.concepto,
+        monto: parseFloat(newPago.monto),
+        fecha_vencimiento: newPago.fecha_vencimiento,
+        tipo_recurrencia: newPago.tipo_recurrencia,
+        duracion_meses: newPago.tipo_recurrencia === 'mensual' ? parseInt(newPago.duracion_meses || 12) : 1
+      };
+
+      console.log('📤 Enviando datos de pago:', paymentData);
+
+      const response = await adminService.createPayment(paymentData);
+
+      if (response.success) {
+        await loadPaymentsData(); // Recargar datos
+        handleModalClose();
+        alert(response.message || 'Pago(s) creado(s) exitosamente');
+      } else {
+        alert(response.message || 'Error al crear el pago');
+      }
+    } catch (error) {
+      console.error('Error creando pago:', error);
+      alert('Error al crear el pago');
+    } finally {
+      setCreatingPago(false);
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    setUpdatingPago(true);
+    try {
+      // Simulación mientras se conecta con backend
+      const updatedPagos = pagos.map(p => 
+        p.id === selectedPago.id 
+          ? { 
+              ...p, 
+              monto: parseFloat(editPago.monto),
+              estado: editPago.estado_pago,
+              metodoPago: editPago.metodo_pago || null
+            } 
+          : p
+      );
+      setPagos(updatedPagos);
+      handleModalClose();
+      alert('Pago actualizado exitosamente');
+    } catch (error) {
+      console.error('Error actualizando pago:', error);
+      alert('Error al actualizar el pago');
+    } finally {
+      setUpdatingPago(false);
+    }
+  };
+
+  const formatSoles = (amount) => {
+    return new Intl.NumberFormat('es-PE', {
+      style: 'currency',
+      currency: 'PEN'
+    }).format(amount);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('es-ES');
+  };
+
+  const getStatusColor = (estado) => {
+    switch (estado) {
+      case 'Pagado':
+        return 'bg-green-100 text-green-800';
+      case 'Pendiente':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Atrasado':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const filteredPagos = Array.isArray(pagos) ? pagos.filter(pago =>
+    (pago.inquilino || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (pago.apartamento || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (pago.tipo || pago.concepto || '').toLowerCase().includes(searchQuery.toLowerCase())
+  ) : [];
+
+  if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
       </div>
     );
   }
@@ -387,8 +505,8 @@ const PaymentsManagement = () => {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500">Ingresos del Mes</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatSoles(pagoStats.ingresosMes)}</p>
-                    <p className="text-sm text-gray-500">{pagoStats.ingresosMes > 0 ? '+32% vs mes anterior' : 'Sin ingresos aún'}</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatSoles(stats.ingresosMes)}</p>
+                    <p className="text-sm text-gray-500">{stats.cambioMes > 0 ? `+${stats.cambioMes}% vs mes anterior` : 'Sin ingresos aún'}</p>
                   </div>
                 </div>
               </div>
@@ -402,8 +520,8 @@ const PaymentsManagement = () => {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500">Pagos Pendientes</p>
-                    <p className="text-2xl font-bold text-gray-900">{pagoStats.pagosPendientes}</p>
-                    <p className="text-sm text-gray-500">{pagoStats.pagosPendientes > 0 ? 'Por cobrar' : 'Sin pendientes'}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pagosPendientes}</p>
+                    <p className="text-sm text-gray-500">{stats.pagosPendientes > 0 ? 'Por cobrar' : 'Sin pendientes'}</p>
                   </div>
                 </div>
               </div>
@@ -417,8 +535,8 @@ const PaymentsManagement = () => {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500">Pagos Vencidos</p>
-                    <p className="text-2xl font-bold text-gray-900">{pagoStats.pagosVencidos}</p>
-                    <p className="text-sm text-red-600">{pagoStats.pagosVencidos > 0 ? 'Requiere atención' : 'Sin vencidos'}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pagosVencidos}</p>
+                    <p className="text-sm text-red-600">{stats.pagosVencidos > 0 ? 'Requiere atención' : 'Sin vencidos'}</p>
                   </div>
                 </div>
               </div>
@@ -432,8 +550,8 @@ const PaymentsManagement = () => {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500">Tasa de Cobro</p>
-                    <p className="text-2xl font-bold text-gray-900">{pagoStats.tasaCobro}%</p>
-                    <p className="text-sm text-teal-600">{pagoStats.tasaCobro >= 90 ? 'Excelente' : pagoStats.tasaCobro >= 70 ? 'Buena' : 'Mejorable'}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.tasaCobro}%</p>
+                    <p className="text-sm text-teal-600">{stats.tasaCobro >= 90 ? 'Excelente' : stats.tasaCobro >= 70 ? 'Buena' : 'Mejorable'}</p>
                   </div>
                 </div>
               </div>
@@ -445,35 +563,24 @@ const PaymentsManagement = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-4">Progreso Mensual</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">Enero</span>
-                  <span className="text-sm text-gray-500">85%</span>
+              {stats.progresoMensual.map((progreso, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-700">{progreso.mes}</span>
+                    <span className="text-sm text-gray-500">{Math.round((progreso.monto / progreso.total) * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="h-2 rounded-full" 
+                      style={{
+                        width: `${(progreso.monto / progreso.total) * 100}%`,
+                        backgroundColor: (progreso.monto / progreso.total) >= 0.9 ? '#10B981' : 
+                                       (progreso.monto / progreso.total) >= 0.7 ? '#F59E0B' : '#EF4444'
+                      }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{width: '85%'}}></div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">Febrero</span>
-                  <span className="text-sm text-gray-500">92%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{width: '92%'}}></div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">Marzo</span>
-                  <span className="text-sm text-gray-500">78%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-yellow-600 h-2 rounded-full" style={{width: '78%'}}></div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -527,7 +634,10 @@ const PaymentsManagement = () => {
                         Inquilino
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Concepto
+                        Apartamento
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tipo
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Monto
@@ -550,7 +660,20 @@ const PaymentsManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredPagos.map((pago) => (
+                    {filteredPagos.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
+                          <div className="flex flex-col items-center">
+                            <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p className="text-lg font-medium">No hay pagos registrados</p>
+                            <p className="text-sm text-gray-400">Los pagos aparecerán aquí una vez que se solucionen los problemas de conexión con la base de datos</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPagos.map((pago) => (
                       <tr key={pago.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -567,22 +690,19 @@ const PaymentsManagement = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {pago.concepto}
+                          {pago.apartamento}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {pago.tipo}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {formatSoles(pago.monto)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {pago.fechaVencimiento}
+                          {formatDate(pago.vencimiento)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            pago.estado === 'Pagado' 
-                              ? 'bg-green-100 text-green-800' 
-                              : pago.estado === 'Pendiente'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(pago.estado)}`}>
                             {pago.estado}
                           </span>
                         </td>
@@ -590,7 +710,7 @@ const PaymentsManagement = () => {
                           {pago.metodoPago || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {pago.fechaPago || '-'}
+                          {formatDate(pago.fechaPago)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
@@ -623,7 +743,7 @@ const PaymentsManagement = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )))}
                   </tbody>
                 </table>
               </div>
@@ -665,6 +785,28 @@ const PaymentsManagement = () => {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Inquilino
+                  </label>
+                  <select
+                    value={newPago.id_inquilino}
+                    onChange={(e) => setNewPago(prev => ({ ...prev, id_inquilino: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Seleccionar inquilino ({tenants.length} disponibles)</option>
+                    {tenants.map((tenant, index) => (
+                      <option key={tenant.id_inquilino || tenant.id_usuario || `tenant-${index}`} value={tenant.id_usuario || tenant.id_inquilino}>
+                        {tenant.nombre || tenant.Usuario?.nombre || `Inquilino ${tenant.id_usuario || tenant.id_inquilino || index + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                  {tenants.length === 0 && (
+                    <p className="text-sm text-red-600 mt-1">No se encontraron inquilinos. Verifica que haya inquilinos registrados.</p>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Monto (S/)
                   </label>
                   <input
@@ -678,6 +820,53 @@ const PaymentsManagement = () => {
                     required
                   />
                 </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fecha de Vencimiento
+                  </label>
+                  <input
+                    type="date"
+                    value={newPago.fecha_vencimiento}
+                    onChange={(e) => setNewPago(prev => ({ ...prev, fecha_vencimiento: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Pago
+                  </label>
+                  <select
+                    value={newPago.tipo_recurrencia}
+                    onChange={(e) => setNewPago(prev => ({ ...prev, tipo_recurrencia: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="unico">Pago único</option>
+                    <option value="mensual">Pago mensual recurrente</option>
+                  </select>
+                </div>
+
+                {newPago.tipo_recurrencia === 'mensual' && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Duración (meses)
+                    </label>
+                    <input
+                      type="number"
+                      value={newPago.duracion_meses}
+                      onChange={(e) => setNewPago(prev => ({ ...prev, duracion_meses: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min="1"
+                      max="24"
+                      placeholder="12"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Se crearán {newPago.duracion_meses || 12} pagos mensuales consecutivos
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex justify-end space-x-3 mt-6">
                   <button
@@ -725,8 +914,13 @@ const PaymentsManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
-                  <div className="text-lg text-gray-900">{selectedPago.concepto}</div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Apartamento</label>
+                  <div className="text-lg text-gray-900">{selectedPago.apartamento}</div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                  <div className="text-lg text-gray-900">{selectedPago.tipo}</div>
                 </div>
 
                 <div>
@@ -736,20 +930,14 @@ const PaymentsManagement = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    selectedPago.estado === 'Pagado' 
-                      ? 'bg-green-100 text-green-800' 
-                      : selectedPago.estado === 'Pendiente'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedPago.estado)}`}>
                     {selectedPago.estado}
                   </span>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Vencimiento</label>
-                  <div className="text-lg text-gray-900">{selectedPago.fechaVencimiento || 'No especificada'}</div>
+                  <div className="text-lg text-gray-900">{formatDate(selectedPago.vencimiento)}</div>
                 </div>
 
                 {selectedPago.metodoPago && (
@@ -762,7 +950,7 @@ const PaymentsManagement = () => {
                 {selectedPago.fechaPago && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Pago</label>
-                    <div className="text-lg text-gray-900">{selectedPago.fechaPago}</div>
+                    <div className="text-lg text-gray-900">{formatDate(selectedPago.fechaPago)}</div>
                   </div>
                 )}
               </div>
@@ -822,9 +1010,9 @@ const PaymentsManagement = () => {
                     onChange={(e) => setEditPago(prev => ({ ...prev, estado_pago: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="pendiente">Pendiente</option>
-                    <option value="pagado">Pagado</option>
-                    <option value="vencido">Vencido</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Pagado">Pagado</option>
+                    <option value="Atrasado">Atrasado</option>
                   </select>
                 </div>
 
@@ -838,9 +1026,9 @@ const PaymentsManagement = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Seleccionar método</option>
-                    <option value="efectivo">Efectivo</option>
-                    <option value="transferencia_bancaria">Transferencia Bancaria</option>
-                    <option value="tarjeta_credito">Tarjeta de Crédito</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Tarjeta">Tarjeta</option>
                   </select>
                 </div>
 

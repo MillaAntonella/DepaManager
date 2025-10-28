@@ -15,6 +15,14 @@ const Inquilino = sequelize.define('Inquilino', {
       key: 'id'
     }
   },
+  usuario_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true, // Permitir null temporalmente
+    references: {
+      model: 'usuarios',
+      key: 'id'
+    }
+  },
   id_propiedad: {
     type: DataTypes.BIGINT.UNSIGNED,
     allowNull: false,

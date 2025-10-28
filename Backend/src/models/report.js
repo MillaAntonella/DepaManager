@@ -8,11 +8,11 @@ const Reporte = sequelize.define('Reporte', {
     primaryKey: true
   },
   id_usuario_creador: {
-    type: DataTypes.BIGINT.UNSIGNED,
+    type: DataTypes.INTEGER,
     allowNull: false,
     references: {
       model: 'usuarios',
-      key: 'id_usuario'
+      key: 'id'
     }
   },
   nombre_reporte: {

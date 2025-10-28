@@ -67,6 +67,16 @@ const setupAssociations = () => {
     as: 'contrato' 
   });
 
+  // Inquilino - Pago (1:N)
+  Inquilino.hasMany(Pago, { 
+    foreignKey: 'id_inquilino', 
+    as: 'pagos' 
+  });
+  Pago.belongsTo(Inquilino, { 
+    foreignKey: 'id_inquilino', 
+    as: 'inquilino' 
+  });
+
   // Inquilino - Incidencia (1:N)
   Inquilino.hasMany(Incidencia, { 
     foreignKey: 'id_inquilino', 
@@ -129,11 +139,11 @@ const setupAssociations = () => {
 
   // Usuario - Notificacion (1:N)
   Usuario.hasMany(Notificacion, { 
-    foreignKey: 'id_usuario', 
+    foreignKey: 'usuario_id', 
     as: 'notificaciones' 
   });
   Notificacion.belongsTo(Usuario, { 
-    foreignKey: 'id_usuario', 
+    foreignKey: 'usuario_id', 
     as: 'usuario' 
   });
 

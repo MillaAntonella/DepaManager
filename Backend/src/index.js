@@ -15,9 +15,13 @@ app.use(express.urlencoded({ extended: true }));
 // Rutas de la API
 const authRoutes = require('./routes/auth.routes');
 const paymentRoutes = require('./routes/payment.routes');
+const tenantRoutes = require('./routes/tenant.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/pagos', paymentRoutes);
+app.use('/api/tenant', tenantRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
